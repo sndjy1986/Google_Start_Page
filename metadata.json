@@ -1,0 +1,10 @@
+{
+  "name": "Google Start Page",
+  "description": "A highly customizable personal browser home dashboard featuring Google Search, draggable and resizable widgets (weather, notes, todo list, clock, zen quotes, and Gemini AI companion), personalized themes, fonts, and gorgeous background presets.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

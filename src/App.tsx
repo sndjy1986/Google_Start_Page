@@ -1,0 +1,337 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { Settings, HelpCircle, Lock, Unlock, Eye, Sparkles, RefreshCw, Layers, LogIn, LogOut } from 'lucide-react';
+
+import { AppSettings, WidgetConfig, WidgetType } from './types';
+import SearchBox from './components/SearchBox';
+import BookmarkGrid from './components/BookmarkGrid';
+import SettingsPanel from './components/SettingsPanel';
+import WidgetWrapper from './components/WidgetWrapper';
+import { useAuth } from './lib/AuthContext';
+
+// Widgets
+import ClockWidget from './components/ClockWidget';
+import WeatherWidget from './components/WeatherWidget';
+import TodoWidget from './components/TodoWidget';
+import NotesWidget from './components/NotesWidget';
+import GeminiChatWidget from './components/GeminiChatWidget';
+import QuotesWidget from './components/QuotesWidget';
+
+const DEFAULT_SETTINGS: AppSettings = {
+  theme: 'glass-dark',
+  font: 'sans',
+  backgroundType: 'solid',
+  backgroundValue: 'radial-gradient(circle at 0% 0%, #4c1d95 0%, transparent 50%), radial-gradient(circle at 100% 100%, #1e3a8a 0%, transparent 50%), radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%)',
+  widgetsLocked: false,
+};
+
+const DEFAULT_WIDGETS: WidgetConfig[] = [
+  { id: 'w-clock', type: 'clock', title: 'Clock & Calendar', x: 2, y: 15, w: 270, h: 185, visible: true, zIndex: 10 },
+  { id: 'w-weather', type: 'weather', title: 'Local Weather', x: 74, y: 15, w: 280, h: 295, visible: true, zIndex: 10 },
+  { id: 'w-todo', type: 'todo', title: 'To-Do Checklist', x: 2, y: 41, w: 270, h: 250, visible: true, zIndex: 10 },
+  { id: 'w-quotes', type: 'quotes', title: 'Zen Wisdom', x: 74, y: 55, w: 280, h: 200, visible: true, zIndex: 10 },
+  { id: 'w-chat', type: 'chat', title: 'Gemini Assistant', x: 33, y: 64, w: 340, h: 285, visible: true, zIndex: 15 },
+  { id: 'w-notes', type: 'notes', title: 'Autosave Notes', x: 2, y: 72, w: 270, h: 215, visible: true, zIndex: 10 },
+];
+
+export default function App() {
+  const { user, token, signIn, signOut } = useAuth();
+  
+  // Load settings
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+
+  // Load widgets layout
+  const [widgets, setWidgets] = useState<WidgetConfig[]>(DEFAULT_WIDGETS);
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [highestZIndex, setHighestZIndex] = useState(20);
+
+  // Load initial settings
+  useEffect(() => {
+    async function loadData() {
+      // Use local storage
+      const savedSettings = localStorage.getItem('google_start_settings');
+      if (savedSettings) {
+        try {
+          setSettings(JSON.parse(savedSettings));
+        } catch (e) {}
+      }
+      const savedLayout = localStorage.getItem('google_start_widgets_layout');
+      if (savedLayout) {
+        try {
+          setWidgets(JSON.parse(savedLayout));
+        } catch (e) {}
+      }
+    }
+    loadData();
+  }, [token]);
+
+  // Save Settings
+  const handleUpdateSettings = async (newSettings: Partial<AppSettings>) => {
+    const updated = { ...settings, ...newSettings };
+    setSettings(updated);
+    localStorage.setItem('google_start_settings', JSON.stringify(updated));
+  };
+
+  // Save Widgets
+  const handleSaveWidgets = async (updatedWidgets: WidgetConfig[]) => {
+    setWidgets(updatedWidgets);
+    localStorage.setItem('google_start_widgets_layout', JSON.stringify(updatedWidgets));
+  };
+
+  // Toggle single widget visibility
+  const handleToggleWidget = (type: WidgetType) => {
+    const updated = widgets.map((w) => (w.type === type ? { ...w, visible: !w.visible } : w));
+    handleSaveWidgets(updated);
+  };
+
+  // Track widget positions
+  const handleMoveWidget = (id: string, x: number, y: number) => {
+    const updated = widgets.map((w) => (w.id === id ? { ...w, x, y } : w));
+    handleSaveWidgets(updated);
+  };
+
+  // Track widget resizing
+  const handleResizeWidget = (id: string, w: number, h: number) => {
+    const updated = widgets.map((widget) => (widget.id === id ? { ...widget, w, h } : widget));
+    handleSaveWidgets(updated);
+  };
+
+  // Close widget
+  const handleCloseWidget = (id: string) => {
+    const updated = widgets.map((w) => (w.id === id ? { ...w, visible: false } : w));
+    handleSaveWidgets(updated);
+  };
+
+  // Focus widget (bring to top layer)
+  const handleFocusWidget = (id: string) => {
+    const nextZ = highestZIndex + 1;
+    setHighestZIndex(nextZ);
+    const updated = widgets.map((w) => (w.id === id ? { ...w, zIndex: nextZ } : w));
+    handleSaveWidgets(updated);
+  };
+
+  // Restore Default positions & options
+  const handleResetLayout = () => {
+    if (window.confirm('Are you sure you want to restore the default widgets layout?')) {
+      handleSaveWidgets(DEFAULT_WIDGETS);
+      handleUpdateSettings({ widgetsLocked: false });
+    }
+  };
+
+  // Master Restore system
+  const handleMasterReset = () => {
+    if (window.confirm('This will wipe all custom settings, layout, bookmarks, notes, and restore your start page to default. Proceed?')) {
+      localStorage.clear();
+      if (token) {
+        // Option to reset db too if needed, but client-side is fine for now
+      }
+      window.location.reload();
+    }
+  };
+
+  // Map settings to font classes
+  const fontClass = {
+    sans: 'font-sans',
+    mono: 'font-mono',
+    serif: 'font-serif',
+    display: 'font-display',
+    playful: 'font-playful',
+  }[settings.font];
+
+  // Map settings to theme styling
+  const getThemeClass = () => {
+    switch (settings.theme) {
+      case 'glass-light':
+        return 'bg-white/15 text-slate-950 border-white/30 backdrop-blur-xl shadow-2xl';
+      case 'glass-dark':
+        return 'bg-white/5 text-white border-white/10 backdrop-blur-2xl shadow-2xl';
+      case 'cyberpunk':
+        return 'bg-purple-950/20 text-pink-300 border-cyan-400/30 backdrop-blur-xl shadow-[0_0_20px_rgba(6,182,212,0.15)]';
+      case 'matrix':
+        return 'bg-black/85 text-green-400 border-green-500/30 backdrop-blur-xl font-mono';
+      case 'sunset-glow':
+        return 'bg-orange-950/15 text-amber-100 border-orange-500/20 backdrop-blur-xl shadow-2xl';
+      case 'minimal-light':
+        return 'bg-slate-50 text-slate-900 border-slate-200 shadow-sm';
+      default:
+        return 'bg-white/5 text-white border-white/10 backdrop-blur-2xl shadow-2xl';
+    }
+  };
+
+  // Get active widget visibility map for Settings Drawer
+  const activeVisibilityMap = widgets.reduce(
+    (acc, w) => ({ ...acc, [w.type]: w.visible }),
+    {} as Record<WidgetType, boolean>
+  );
+
+  // Render correct content inside draggable widget
+  const renderWidgetContent = (type: WidgetType) => {
+    switch (type) {
+      case 'clock':
+        return <ClockWidget />;
+      case 'weather':
+        return <WeatherWidget />;
+      case 'todo':
+        return <TodoWidget />;
+      case 'notes':
+        return <NotesWidget />;
+      case 'chat':
+        return <GeminiChatWidget />;
+      case 'quotes':
+        return <QuotesWidget />;
+      default:
+        return null;
+    }
+  };
+
+  // Background inline styling
+  const backgroundStyle: React.CSSProperties = {};
+  if (settings.backgroundType === 'solid') {
+    backgroundStyle.background = settings.backgroundValue;
+  } else {
+    backgroundStyle.backgroundImage = `url(${settings.backgroundValue})`;
+    backgroundStyle.backgroundSize = 'cover';
+    backgroundStyle.backgroundPosition = 'center';
+    backgroundStyle.backgroundAttachment = 'fixed';
+  }
+
+  return (
+    <div
+      style={backgroundStyle}
+      className={`min-h-screen relative flex flex-col justify-between overflow-x-hidden transition-all duration-500 ${fontClass}`}
+    >
+      {/* Heavy background overlay for optimal readability, contrast, and accessibility */}
+      <div 
+        className={`absolute inset-0 z-0 pointer-events-none transition-colors duration-500
+          ${settings.theme.includes('light') 
+            ? 'bg-white/40 backdrop-blur-[1px]' 
+            : 'bg-black/45 backdrop-blur-[1px]'
+          }
+        `}
+      />
+
+      {/* Persistent Elegant Header */}
+      <header className="w-full px-6 py-4 flex items-center justify-between z-10 relative">
+        <div className="flex items-center gap-3">
+          {/* Logo / Title */}
+          <div className="flex items-center gap-1.5 select-none cursor-default bg-black/25 dark:bg-black/15 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 shadow-sm">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+            <h1 className="text-xs font-bold uppercase tracking-wider text-white">Google Start Page</h1>
+          </div>
+
+          {/* Quick locked indicator */}
+          <button
+            onClick={() => handleUpdateSettings({ widgetsLocked: !settings.widgetsLocked })}
+            title={settings.widgetsLocked ? 'Unlock widget movement' : 'Lock widget movement'}
+            className="p-1.5 rounded-full bg-black/20 hover:bg-black/40 border border-white/10 text-white/80 hover:text-white transition-all scale-90"
+          >
+            {settings.widgetsLocked ? (
+              <Lock className="w-3.5 h-3.5 text-emerald-400" />
+            ) : (
+              <Unlock className="w-3.5 h-3.5 text-amber-300" />
+            )}
+          </button>
+        </div>
+
+        {/* Action Controls */}
+        <div className="flex items-center gap-2">
+          {/* Auth Button */}
+          {user ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-white/70 bg-black/20 px-3 py-1 rounded-full">{user.email}</span>
+              <button
+                onClick={signOut}
+                title="Sign out"
+                className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-white hover:text-red-300 transition-colors bg-black/25 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shrink-0"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={signIn}
+              title="Sign in to sync your settings"
+              className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-slate-900 bg-white/90 hover:bg-white active:scale-95 transition-all border border-white/10 px-3 py-1.5 rounded-full shrink-0"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Sign in with Google
+            </button>
+          )}
+
+          {/* Master reset */}
+          <button
+            onClick={handleMasterReset}
+            title="Wipe configuration & bookmarks"
+            className="text-[10px] uppercase font-bold text-white/50 hover:text-red-400 transition-colors bg-black/25 backdrop-blur-md border border-white/5 hover:border-red-500/30 px-3 py-1.5 rounded-full shrink-0"
+          >
+            Reset All
+          </button>
+
+          {/* Customize Panel button */}
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-900 bg-amber-400 hover:bg-amber-300 active:scale-95 border border-amber-300 px-4 py-1.5 rounded-full shadow-lg transition-all"
+          >
+            <Settings className="w-3.5 h-3.5 shrink-0" />
+            <span>Customize</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Main Page Layout Section */}
+      <main className="flex-1 w-full relative z-10 flex flex-col justify-start pt-16 md:pt-24 pb-36 px-4">
+        {/* Core Center Dashboard (Search & Bookmarks) */}
+        <div className="w-full relative pointer-events-auto flex flex-col gap-8">
+          <SearchBox />
+          <BookmarkGrid />
+        </div>
+
+        {/* Draggable Desktop Widgets Workspace Canvas */}
+        <div className="absolute inset-0 pointer-events-none z-20">
+          {widgets
+            .filter((w) => w.visible)
+            .map((widget) => (
+              <WidgetWrapper
+                key={widget.id}
+                id={widget.id}
+                title={widget.title}
+                x={widget.x}
+                y={widget.y}
+                w={widget.w}
+                h={widget.h}
+                zIndex={widget.zIndex}
+                locked={settings.widgetsLocked}
+                onMove={handleMoveWidget}
+                onResize={handleResizeWidget}
+                onClose={() => handleCloseWidget(widget.id)}
+                onFocus={() => handleFocusWidget(widget.id)}
+                themeClass={getThemeClass()}
+              >
+                {renderWidgetContent(widget.type)}
+              </WidgetWrapper>
+            ))}
+        </div>
+      </main>
+
+      {/* Sliding Customize Drawer Side Panel */}
+      <SettingsPanel
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onChangeSettings={handleUpdateSettings}
+        widgetVisibility={activeVisibilityMap}
+        onToggleWidget={handleToggleWidget}
+        onResetLayout={handleResetLayout}
+      />
+
+      {/* Sleek Minimal Footer */}
+      <footer className="w-full text-center py-4 z-10 relative select-none">
+        <p className="text-[10px] tracking-widest text-white/30 uppercase font-sans">
+          Google Start Page • Gemini Interactive Hub • Crafted with React & Tailwind
+        </p>
+      </footer>
+    </div>
+  );
+}
