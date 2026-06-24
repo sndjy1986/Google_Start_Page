@@ -57,7 +57,7 @@ export default function TodoWidget() {
   };
 
   return (
-    <div className="flex flex-col h-full text-white font-sans text-xs">
+    <div className="flex flex-col h-full text-white font-sans text-xs min-h-0">
       {/* Input form */}
       <form onSubmit={handleAdd} className="flex gap-1.5 mb-3">
         <input
@@ -76,7 +76,7 @@ export default function TodoWidget() {
       </form>
 
       {/* List items */}
-      <div className="flex-1 overflow-auto space-y-1.5 max-h-[160px] pr-1">
+      <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 min-h-0">
         {todos.length === 0 ? (
           <div className="text-center text-white/40 py-6 italic text-[11px]">
             No pending tasks. Add some!

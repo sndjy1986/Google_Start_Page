@@ -189,7 +189,7 @@ export default function WidgetWrapper({
       </div>
 
       {/* Widget Content Body */}
-      <div className="flex-1 overflow-auto p-4 custom-scrollbar">
+      <div className="flex-1 overflow-hidden p-4">
         {children}
       </div>
 

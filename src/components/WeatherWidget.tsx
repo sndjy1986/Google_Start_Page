@@ -172,6 +172,7 @@ export default function WeatherWidget() {
           setLocationName(reverseName);
           setLat(coordsLat);
           setLon(coordsLon);
+          setSearchQuery('');
           localStorage.setItem('weather_location_name', reverseName);
           localStorage.setItem('weather_lat', String(coordsLat));
           localStorage.setItem('weather_lon', String(coordsLon));
@@ -179,6 +180,7 @@ export default function WeatherWidget() {
           setLocationName('Detected Location');
           setLat(coordsLat);
           setLon(coordsLon);
+          setSearchQuery('');
         }
       },
       (err) => {

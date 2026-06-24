@@ -69,9 +69,9 @@ export default function GeminiChatWidget() {
   };
 
   return (
-    <div className="flex flex-col h-full font-sans text-xs">
+    <div className="flex flex-col h-full font-sans text-xs min-h-0">
       {/* Message list */}
-      <div className="flex-1 overflow-auto space-y-2.5 max-h-[160px] pr-1 mb-2">
+      <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 mb-2 min-h-0">
         {messages.map((m, idx) => (
           <div
             key={idx}
