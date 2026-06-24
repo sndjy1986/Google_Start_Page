@@ -88,7 +88,7 @@ export default function ClockWidget() {
 
       {/* Personalized Greeting */}
       <h2 className="mt-4 text-base font-medium text-white/90 font-sans tracking-wide">
-        {greeting}, Developer!
+        {greeting}, Joey!
       </h2>
 
       {/* Mini Controls */}
