@@ -22,7 +22,7 @@ function getGeminiClient(): GoogleGenAI | null {
       apiKey = apiKey.trim();
     }
     // All real Google API keys start with 'AIzaSy'. Check for this to prevent invalid credentials initialization
-    if (apiKey && apiKey !== "MY_GEMINI_API_KEY" && apiKey !== "undefined" && apiKey !== "null" && apiKey.startsWith("AIzaSy")) {
+    if (apiKey && apiKey !== "MY_GEMINI_API_KEY" && apiKey !== "undefined" && apiKey !== "null" && apiKey.length > 10) {
       aiClient = new GoogleGenAI({
         apiKey: apiKey,
       });
@@ -66,7 +66,7 @@ app.post("/api/gemini/chat", async (req, res) => {
     const systemInstruction = "You are a friendly, witty personal companion on the user's custom browser start page. Give concise, interesting, and direct answers, keeping them short (under 4-5 sentences) and helpful.";
 
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: `${formattedHistory}\nAssistant:`,
       config: {
         systemInstruction,
@@ -157,7 +157,7 @@ Wind: ${wind} ${displayWindUnit}
 Give a funny, warm, and highly engaging one-sentence weather commentary or advice for the user's browser home page. Keep it light, casual, and under 25 words.`;
 
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         systemInstruction: "You are a witty, friendly browser homepage weather reporter.",
@@ -230,7 +230,7 @@ app.post("/api/gemini/quote", async (req, res) => {
     const prompt = `Generate an inspiring, deep, or interesting quote for the category: ${category}. Return the quote and the author name separated by ' — '. Keep the quote short, punchy, and beautiful. Do not include quotes symbols.`;
 
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         systemInstruction: "You are a master of wisdom and motivation, crafting beautiful sayings for a minimalist start page.",
