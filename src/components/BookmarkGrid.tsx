@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, ExternalLink, Link2, FolderPlus, Globe } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, ExternalLink, Link2, FolderPlus, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Bookmark } from '../types';
 
-const CATEGORIES = ['Home', 'Work', 'Server'];
+const DEFAULT_CATEGORIES = ['Home', 'Work', 'Server'];
 
 const INITIAL_BOOKMARKS: Bookmark[] = [
   { id: '1', name: 'Google', url: 'https://google.com', category: 'Home' },
@@ -16,6 +16,11 @@ const INITIAL_BOOKMARKS: Bookmark[] = [
 ];
 
 export default function BookmarkGrid() {
+  const [categories, setCategories] = useState<string[]>(() => {
+    const saved = localStorage.getItem('google_start_categories');
+    return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
+  });
+
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => {
     const saved = localStorage.getItem('google_start_bookmarks');
     if (saved) {
@@ -29,21 +34,34 @@ export default function BookmarkGrid() {
   });
 
   const [showAddForm, setShowAddForm] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('Home');
+  const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(categories[0] || 'Home');
   const [newBookmarkName, setNewBookmarkName] = useState('');
   const [newBookmarkUrl, setNewBookmarkUrl] = useState('');
   const [newBookmarkIcon, setNewBookmarkIcon] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  // Make sure to sync active category if categories change from another tab, or on initial load
+  useEffect(() => {
+    if (!categories.includes(activeCategory)) {
+      setActiveCategory(categories[0] || 'Home');
+    }
+  }, [categories, activeCategory]);
 
   const saveBookmarks = (list: Bookmark[]) => {
     setBookmarks(list);
     localStorage.setItem('google_start_bookmarks', JSON.stringify(list));
   };
 
+  const saveCategories = (list: string[]) => {
+    setCategories(list);
+    localStorage.setItem('google_start_categories', JSON.stringify(list));
+  };
+
   const handleAddBookmark = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBookmarkName.trim() || !newBookmarkUrl.trim()) return;
 
-    // Ensure URL has a protocol
     let formattedUrl = newBookmarkUrl.trim();
     if (!/^https?:\/\//i.test(formattedUrl)) {
       formattedUrl = `https://${formattedUrl}`;
@@ -57,13 +75,49 @@ export default function BookmarkGrid() {
       category: activeCategory,
     };
 
-    const updated = [...bookmarks, newBM];
-    saveBookmarks(updated);
+    saveBookmarks([...bookmarks, newBM]);
 
     setNewBookmarkName('');
     setNewBookmarkUrl('');
     setNewBookmarkIcon('');
     setShowAddForm(false);
+  };
+
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cat = newCategoryName.trim();
+    if (!cat || categories.includes(cat)) return;
+    
+    const newCats = [...categories, cat];
+    saveCategories(newCats);
+    setActiveCategory(cat);
+    setNewCategoryName('');
+    setShowAddCategoryForm(false);
+  };
+
+  const handleDeleteCategory = (catToDelete: string) => {
+    if (categories.length <= 1) return; // don't delete last category
+    if (!window.confirm(`Delete category "${catToDelete}" and all its bookmarks?`)) return;
+
+    const newCats = categories.filter(c => c !== catToDelete);
+    saveCategories(newCats);
+    
+    const newBms = bookmarks.filter(b => b.category !== catToDelete);
+    saveBookmarks(newBms);
+
+    if (activeCategory === catToDelete) {
+      setActiveCategory(newCats[0]);
+    }
+  };
+
+  const moveCategory = (index: number, direction: 'left' | 'right') => {
+    const newCats = [...categories];
+    if (direction === 'left' && index > 0) {
+      [newCats[index - 1], newCats[index]] = [newCats[index], newCats[index - 1]];
+    } else if (direction === 'right' && index < newCats.length - 1) {
+      [newCats[index + 1], newCats[index]] = [newCats[index], newCats[index + 1]];
+    }
+    saveCategories(newCats);
   };
 
   const handleDeleteBookmark = (id: string, e: React.MouseEvent) => {
@@ -73,7 +127,6 @@ export default function BookmarkGrid() {
     saveBookmarks(updated);
   };
 
-  // Helper to extract domain for high-resolution favicon
   const getFaviconUrl = (bookmarkUrl: string) => {
     try {
       const urlObj = new URL(bookmarkUrl);
@@ -87,41 +140,82 @@ export default function BookmarkGrid() {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const filteredBookmarks = bookmarks.filter((bm) => (bm.category || 'Home') === activeCategory);
+  const filteredBookmarks = bookmarks.filter((bm) => (bm.category || categories[0]) === activeCategory);
 
   return (
     <div className="w-full max-w-4xl mx-auto mt-6 px-4 select-none font-sans">
-      {/* Header section */}
-      <div className="flex items-center justify-between mb-4 border-b border-white/15 pb-2">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 border-b border-white/15 pb-2 gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <h3 className="text-sm font-semibold tracking-wide text-white flex items-center gap-2">
             <Link2 className="w-4 h-4 text-amber-300" />
             Bookmarks
           </h3>
-          <div className="flex items-center gap-1 bg-black/20 p-1 rounded-lg">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`text-xs px-3 py-1 rounded-md transition-all ${
-                  activeCategory === cat
-                    ? 'bg-white/20 text-white font-bold shadow-sm'
-                    : 'text-white/60 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {cat}
-              </button>
+          <div className="flex flex-wrap items-center gap-1 bg-black/20 p-1 rounded-lg">
+            {categories.map((cat, idx) => (
+              <div key={cat} className="flex items-center group relative">
+                <button
+                  onClick={() => setActiveCategory(cat)}
+                  className={`text-xs px-3 py-1.5 rounded-md transition-all flex items-center gap-1 ${
+                    activeCategory === cat
+                      ? 'bg-white/20 text-white font-bold shadow-sm'
+                      : 'text-white/60 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {cat}
+                </button>
+                
+                {/* Active category controls (move left/right, delete) */}
+                {activeCategory === cat && (
+                  <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/80 rounded-md p-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                    <button onClick={() => moveCategory(idx, 'left')} disabled={idx === 0} className="p-0.5 text-white/70 hover:text-white disabled:opacity-30">
+                      <ChevronLeft className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => handleDeleteCategory(cat)} disabled={categories.length <= 1} className="p-0.5 text-white/70 hover:text-red-400 disabled:opacity-30 mx-1">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => moveCategory(idx, 'right')} disabled={idx === categories.length - 1} className="p-0.5 text-white/70 hover:text-white disabled:opacity-30">
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
+            <button
+              onClick={() => setShowAddCategoryForm(!showAddCategoryForm)}
+              title="Add Page"
+              className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-1 text-xs text-white/80 hover:text-white bg-white/10 hover:bg-white/15 border border-white/15 px-2.5 py-1 rounded-full transition-all"
+          className="flex items-center gap-1 text-xs text-white/80 hover:text-white bg-white/10 hover:bg-white/15 border border-white/15 px-2.5 py-1.5 rounded-full transition-all shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Add</span>
+          <span>Add Link</span>
         </button>
       </div>
+
+      {showAddCategoryForm && (
+        <form
+          onSubmit={handleAddCategory}
+          className="mb-4 p-3 rounded-xl bg-white/10 border border-white/20 flex items-center gap-3 animate-fadeIn backdrop-blur-md max-w-sm"
+        >
+          <input
+            type="text"
+            placeholder="New Page Name..."
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            required
+            className="flex-1 px-3 py-1.5 text-xs bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:border-white/50 placeholder-white/50"
+          />
+          <button type="submit" className="text-xs py-1.5 px-3 font-semibold bg-amber-400 text-slate-900 rounded-lg hover:bg-amber-300 transition-colors">
+            Add
+          </button>
+        </form>
+      )}
 
       {/* Add Bookmark form */}
       {showAddForm && (
@@ -157,7 +251,7 @@ export default function BookmarkGrid() {
               type="submit"
               className="flex-1 text-xs py-1.5 font-semibold bg-amber-400 text-slate-900 rounded-lg hover:bg-amber-300 transition-colors"
             >
-              Save Bookmark
+              Save to {activeCategory}
             </button>
             <button
               type="button"
@@ -234,3 +328,4 @@ export default function BookmarkGrid() {
     </div>
   );
 }
+

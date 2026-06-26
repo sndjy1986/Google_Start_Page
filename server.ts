@@ -8,7 +8,7 @@ import { GoogleGenAI } from "@google/genai";
 dotenv.config();
 
 const app = express();
-const PORT = parseInt(process.env.PORT || "3000", 10);
+const PORT = 3000;
 
 app.use(express.json());
 
@@ -63,7 +63,12 @@ app.post("/api/gemini/chat", async (req, res) => {
   try {
     // Reconstruct the chat or send the prompt
     // For simplicity, we can feed the conversation history to the model
-    const formattedHistory = messages.map((m: any) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join("\n");
+    // Filter out previous error/offline messages so the model doesn't roleplay them
+    const filteredMessages = messages.filter((m: any) => 
+      !m.content.includes("offline demo mode") && 
+      !m.content.includes("Gemini API key is not configured")
+    );
+    const formattedHistory = filteredMessages.map((m: any) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join("\n");
     const systemInstruction = "You are a friendly, witty personal companion on the user's custom browser start page. Give concise, interesting, and direct answers, keeping them short (under 4-5 sentences) and helpful.";
 
     const response = await client.models.generateContent({
