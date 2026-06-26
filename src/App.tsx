@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Settings, HelpCircle, Lock, Unlock, Eye, Sparkles, RefreshCw, Layers, LogIn, LogOut } from 'lucide-react';
+import { Settings, HelpCircle, Lock, Unlock, Eye, Sparkles, RefreshCw, Layers } from 'lucide-react';
 
 import { AppSettings, WidgetConfig, WidgetType } from './types';
 import SearchBox from './components/SearchBox';
 import BookmarkGrid from './components/BookmarkGrid';
 import SettingsPanel from './components/SettingsPanel';
 import WidgetWrapper from './components/WidgetWrapper';
-import { useAuth } from './lib/AuthContext';
 
 // Widgets
 import ClockWidget from './components/ClockWidget';
@@ -39,12 +38,19 @@ localStorage.setItem = function (key: string, value: string) {
   ];
 
   if (keysToSync.includes(key)) {
-    const token = (window as any).__firebaseToken;
+    let passcode = "";
+    try {
+      const savedSettings = localStorage.getItem('google_start_settings');
+      if (savedSettings) {
+         passcode = JSON.parse(savedSettings).syncPasscode || "";
+      }
+    } catch(e) {}
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    if (passcode) {
+      headers['x-sync-passcode'] = passcode;
     }
 
     fetch('/api/sync', {
@@ -73,7 +79,6 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
 ];
 
 export default function App() {
-  const { user, token, signIn, signOut } = useAuth();
   
   // Load settings
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -85,54 +90,88 @@ export default function App() {
   const [highestZIndex, setHighestZIndex] = useState(20);
   const [isSyncLoading, setIsSyncLoading] = useState(true);
 
-  // Save token for background localStorage interceptor
-  useEffect(() => {
-    (window as any).__firebaseToken = token;
-  }, [token]);
-
   // Load cloud/local settings
   useEffect(() => {
     async function loadData() {
       setIsSyncLoading(true);
-      try {
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-        const res = await fetch('/api/sync', { headers });
-        if (res.ok) {
-          const cloudData = await res.json();
-          // Populate local storage using standard nativeSetItem to avoid recursive sync API trigger
-          Object.keys(cloudData).forEach((key) => {
-            nativeSetItem.call(localStorage, key, cloudData[key]);
-          });
-        }
-      } catch (e) {
-        console.error("Failed to fetch cloud sync data:", e);
-      } finally {
-        const savedSettings = localStorage.getItem('google_start_settings');
-        if (savedSettings) {
-          try {
-            setSettings(JSON.parse(savedSettings));
-          } catch (e) {}
-        }
-        const savedLayout = localStorage.getItem('google_start_widgets_layout');
-        if (savedLayout) {
-          try {
-            setWidgets(JSON.parse(savedLayout));
-          } catch (e) {}
-        }
-        setIsSyncLoading(false);
+      
+      let localPasscode = "";
+      const savedSettings = localStorage.getItem('google_start_settings');
+      if (savedSettings) {
+        try {
+          const parsed = JSON.parse(savedSettings);
+          setSettings(parsed);
+          localPasscode = parsed.syncPasscode || "";
+        } catch (e) {}
       }
+      const savedLayout = localStorage.getItem('google_start_widgets_layout');
+      if (savedLayout) {
+        try {
+          setWidgets(JSON.parse(savedLayout));
+        } catch (e) {}
+      }
+
+      if (localPasscode) {
+        try {
+          const headers: Record<string, string> = {
+             'x-sync-passcode': localPasscode
+          };
+          const res = await fetch('/api/sync', { headers });
+          if (res.ok) {
+            const cloudData = await res.json();
+            if (Object.keys(cloudData).length > 0) {
+              Object.keys(cloudData).forEach((key) => {
+                nativeSetItem.call(localStorage, key, cloudData[key]);
+              });
+              
+              const updatedSettings = localStorage.getItem('google_start_settings');
+              if (updatedSettings) {
+                try { setSettings(JSON.parse(updatedSettings)); } catch (e) {}
+              }
+              const updatedLayout = localStorage.getItem('google_start_widgets_layout');
+              if (updatedLayout) {
+                try { setWidgets(JSON.parse(updatedLayout)); } catch (e) {}
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Failed to fetch cloud sync data:", e);
+        }
+      }
+      setIsSyncLoading(false);
     }
     loadData();
-  }, [token]);
+  }, []);
 
   // Save Settings
   const handleUpdateSettings = async (newSettings: Partial<AppSettings>) => {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
     localStorage.setItem('google_start_settings', JSON.stringify(updated));
+    
+    // If passcode was just changed/entered, trigger a hard reload so all widgets sync down
+    if (newSettings.syncPasscode !== undefined && newSettings.syncPasscode !== settings.syncPasscode) {
+        if (newSettings.syncPasscode.trim().length > 0) {
+            setIsSyncLoading(true);
+            try {
+              const headers: Record<string, string> = {
+                'x-sync-passcode': newSettings.syncPasscode
+              };
+              const res = await fetch('/api/sync', { headers });
+              if (res.ok) {
+                const cloudData = await res.json();
+                if (Object.keys(cloudData).length > 0) {
+                  Object.keys(cloudData).forEach((key) => {
+                    nativeSetItem.call(localStorage, key, cloudData[key]);
+                  });
+                }
+              }
+            } catch (e) {
+              console.error("Failed to fetch cloud sync data on passcode change:", e);
+            }
+            window.location.reload();
+        }
+    }
   };
 
   // Save Widgets
@@ -185,9 +224,6 @@ export default function App() {
   const handleMasterReset = () => {
     if (window.confirm('This will wipe all custom settings, layout, bookmarks, notes, and restore your start page to default. Proceed?')) {
       localStorage.clear();
-      if (token) {
-        // Option to reset db too if needed, but client-side is fine for now
-      }
       window.location.reload();
     }
   };
@@ -309,30 +345,6 @@ export default function App() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
-          {/* Auth Button */}
-          {user ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-white/70 bg-black/20 px-3 py-1 rounded-full">{user.email}</span>
-              <button
-                onClick={signOut}
-                title="Sign out"
-                className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-white hover:text-red-300 transition-colors bg-black/25 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full shrink-0"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                Sign Out
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={signIn}
-              title="Sign in to sync your settings"
-              className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-slate-900 bg-white/90 hover:bg-white active:scale-95 transition-all border border-white/10 px-3 py-1.5 rounded-full shrink-0"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              Sign in with Google
-            </button>
-          )}
-
           {/* Master reset */}
           <button
             onClick={handleMasterReset}

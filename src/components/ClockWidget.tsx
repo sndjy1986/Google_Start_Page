@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Calendar, CheckSquare, Edit2 } from 'lucide-react';
-import { useAuth } from '../lib/AuthContext';
 
 export default function ClockWidget() {
-  const { user } = useAuth();
   const [time, setTime] = useState(new Date());
   const [format24h, setFormat24h] = useState(() => {
     return localStorage.getItem('clock_24h') === 'true';
@@ -52,7 +50,7 @@ export default function ClockWidget() {
   };
 
   const startEditing = () => {
-    setNameInput(customName || user?.displayName || 'Developer');
+    setNameInput(customName || 'Developer');
     setIsEditing(true);
   };
 
@@ -93,7 +91,7 @@ export default function ClockWidget() {
     greeting = 'Good night';
   }
 
-  const displayName = customName || user?.displayName || 'Developer';
+  const displayName = customName || 'Developer';
 
   return (
     <div className="flex flex-col items-center justify-center h-full text-white select-none">

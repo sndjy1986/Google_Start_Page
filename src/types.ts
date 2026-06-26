@@ -29,6 +29,7 @@ export interface AppSettings {
   backgroundType: 'preset' | 'custom' | 'solid';
   backgroundValue: string;
   widgetsLocked: boolean;
+  syncPasscode?: string;
 }
 
 export interface TodoItem {

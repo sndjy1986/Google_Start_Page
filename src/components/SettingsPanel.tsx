@@ -276,6 +276,26 @@ export default function SettingsPanel({
               </div>
             </div>
 
+            {/* Sync Passcode */}
+            <div className="mb-6">
+              <h3 className="text-[11px] font-bold tracking-wider text-white/50 uppercase mb-3 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-amber-300" />
+                Sync Passcode
+              </h3>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Enter secret passcode to sync..."
+                  value={settings.syncPasscode || ''}
+                  onChange={(e) => onChangeSettings({ syncPasscode: e.target.value })}
+                  className="w-full px-3 py-2 text-xs bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:border-white/50 placeholder-white/50"
+                />
+                <p className="text-[9px] text-white/40 leading-relaxed italic">
+                  Use the same passcode on other devices to sync your widgets and settings securely without logging in.
+                </p>
+              </div>
+            </div>
+
             {/* System Reset */}
             <div className="pt-4 border-t border-white/10 mt-auto flex flex-col gap-2.5">
               <button

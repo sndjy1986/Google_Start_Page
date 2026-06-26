@@ -4,7 +4,6 @@ import fs from "fs";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import { adminAuth } from "./src/lib/firebase-admin.ts";
 
 dotenv.config();
 
@@ -255,17 +254,11 @@ app.post("/api/gemini/quote", async (req, res) => {
 
 // 5. API: State Sync (GET & POST) to survive iframe / environment restarts
 app.get("/api/sync", async (req, res) => {
-  const authHeader = req.headers.authorization;
+  const passcode = req.headers["x-sync-passcode"] as string;
   let userId = "guest";
 
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.split("Bearer ")[1];
-    try {
-      const decodedToken = await adminAuth.verifyIdToken(token);
-      userId = decodedToken.uid;
-    } catch (e) {
-      console.error("Error verifying token during get sync, using guest:", e);
-    }
+  if (passcode && passcode.trim().length > 0) {
+    userId = passcode.trim();
   }
 
   try {
@@ -290,17 +283,11 @@ app.get("/api/sync", async (req, res) => {
 
 app.post("/api/sync", async (req, res) => {
   const { key, value } = req.body;
-  const authHeader = req.headers.authorization;
+  const passcode = req.headers["x-sync-passcode"] as string;
   let userId = "guest";
 
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.split("Bearer ")[1];
-    try {
-      const decodedToken = await adminAuth.verifyIdToken(token);
-      userId = decodedToken.uid;
-    } catch (e) {
-      console.error("Error verifying token during post sync, using guest:", e);
-    }
+  if (passcode && passcode.trim().length > 0) {
+    userId = passcode.trim();
   }
 
   try {
