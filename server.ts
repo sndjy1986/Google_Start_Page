@@ -21,6 +21,7 @@ function getGeminiClient(): GoogleGenAI | null {
     if (apiKey) {
       apiKey = apiKey.trim();
     }
+
     // All real Google API keys start with 'AIzaSy'. Check for this to prevent invalid credentials initialization
     if (apiKey && apiKey !== "MY_GEMINI_API_KEY" && apiKey !== "undefined" && apiKey !== "null" && apiKey.length > 10) {
       aiClient = new GoogleGenAI({
