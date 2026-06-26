@@ -161,12 +161,12 @@ export default function WeatherWidget() {
         // Reverse search or set name as Current Coords
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coordsLat}&lon=${coordsLon}`);
-          let reverseName = 'My Location';
+          let reverseName = 'Detected Location';
           if (res.ok) {
             const data = await res.json();
-            reverseName = data.address.city || data.address.town || data.address.village || 'Detected Location';
-            if (data.address.country_code) {
-              reverseName += `, ${data.address.country_code.toUpperCase()}`;
+            const cityName = data.address.city || data.address.town || data.address.village;
+            if (cityName) {
+              reverseName = `Detected Location (${cityName})`;
             }
           }
           setLocationName(reverseName);

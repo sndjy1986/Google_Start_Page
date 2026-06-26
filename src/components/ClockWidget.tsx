@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Calendar, CheckSquare } from 'lucide-react';
+import { Clock, Calendar, CheckSquare, Edit2 } from 'lucide-react';
+import { useAuth } from '../lib/AuthContext';
 
 export default function ClockWidget() {
+  const { user } = useAuth();
   const [time, setTime] = useState(new Date());
   const [format24h, setFormat24h] = useState(() => {
     return localStorage.getItem('clock_24h') === 'true';
@@ -9,6 +11,11 @@ export default function ClockWidget() {
   const [showSeconds, setShowSeconds] = useState(() => {
     return localStorage.getItem('clock_seconds') !== 'false';
   });
+  const [customName, setCustomName] = useState(() => {
+    return localStorage.getItem('custom_user_name') || '';
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [nameInput, setNameInput] = useState('');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -27,6 +34,26 @@ export default function ClockWidget() {
     const newVal = !showSeconds;
     setShowSeconds(newVal);
     localStorage.setItem('clock_seconds', String(newVal));
+  };
+
+  const handleSaveName = () => {
+    const trimmed = nameInput.trim();
+    setCustomName(trimmed);
+    localStorage.setItem('custom_user_name', trimmed);
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveName();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+    }
+  };
+
+  const startEditing = () => {
+    setNameInput(customName || user?.displayName || 'Developer');
+    setIsEditing(true);
   };
 
   // Format Time
@@ -66,6 +93,8 @@ export default function ClockWidget() {
     greeting = 'Good night';
   }
 
+  const displayName = customName || user?.displayName || 'Developer';
+
   return (
     <div className="flex flex-col items-center justify-center h-full text-white select-none">
       {/* Time Display */}
@@ -87,9 +116,29 @@ export default function ClockWidget() {
       </div>
 
       {/* Personalized Greeting */}
-      <h2 className="mt-4 text-base font-medium text-white/90 font-sans tracking-wide">
-        {greeting}, Joey!
-      </h2>
+      <div className="mt-4 flex items-center gap-1.5 group">
+        {isEditing ? (
+          <input
+            type="text"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            onBlur={handleSaveName}
+            onKeyDown={handleKeyDown}
+            autoFocus
+            maxLength={25}
+            className="text-base font-medium text-white/95 bg-white/10 border border-white/20 rounded px-2 py-0.5 outline-none font-sans text-center max-w-[160px]"
+          />
+        ) : (
+          <h2 
+            onClick={startEditing}
+            className="text-base font-medium text-white/90 font-sans tracking-wide cursor-pointer hover:text-amber-300 transition-colors flex items-center gap-1"
+            title="Click to edit greeting name"
+          >
+            {greeting}, {displayName}!
+            <Edit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-amber-300/80" />
+          </h2>
+        )}
+      </div>
 
       {/* Mini Controls */}
       <div className="flex items-center gap-3 mt-4 text-[10px] text-white/50">

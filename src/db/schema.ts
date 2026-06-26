@@ -23,6 +23,7 @@ export const userSettings = pgTable('user_settings', {
   widgetNotesContent: text('widget_notes_content'),
   widgetChatHistory: jsonb('widget_chat_history'),
   quoteCategory: text('quote_category').default('zen'),
+  customUserName: text('custom_user_name').default(''),
 });
 
 export const usersRelations = relations(users, ({ one }) => ({

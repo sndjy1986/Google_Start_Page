@@ -189,7 +189,7 @@ export default function WidgetWrapper({
       </div>
 
       {/* Widget Content Body */}
-      <div className="flex-1 overflow-hidden p-4">
+      <div className="flex-1 overflow-hidden p-4 flex flex-col min-h-0">
         {children}
       </div>
 

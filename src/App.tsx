@@ -17,6 +17,44 @@ import NotesWidget from './components/NotesWidget';
 import GeminiChatWidget from './components/GeminiChatWidget';
 import QuotesWidget from './components/QuotesWidget';
 
+// 1. Intercept localStorage changes to automatically back them up to our server in real-time
+const nativeSetItem = localStorage.setItem;
+localStorage.setItem = function (key: string, value: string) {
+  nativeSetItem.apply(this, arguments as any);
+
+  const keysToSync = [
+    'google_start_settings',
+    'google_start_widgets_layout',
+    'google_start_bookmarks',
+    'widget_todos',
+    'widget_notes_content',
+    'widget_chat_history',
+    'quote_category',
+    'clock_24h',
+    'clock_seconds',
+    'custom_user_name',
+    'weather_location_name',
+    'weather_lat',
+    'weather_lon'
+  ];
+
+  if (keysToSync.includes(key)) {
+    const token = (window as any).__firebaseToken;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    fetch('/api/sync', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ key, value }),
+    }).catch((err) => console.warn("Background sync failed:", err));
+  }
+};
+
 const DEFAULT_SETTINGS: AppSettings = {
   theme: 'glass-dark',
   font: 'sans',
@@ -45,22 +83,46 @@ export default function App() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [highestZIndex, setHighestZIndex] = useState(20);
+  const [isSyncLoading, setIsSyncLoading] = useState(true);
 
-  // Load initial settings
+  // Save token for background localStorage interceptor
+  useEffect(() => {
+    (window as any).__firebaseToken = token;
+  }, [token]);
+
+  // Load cloud/local settings
   useEffect(() => {
     async function loadData() {
-      // Use local storage
-      const savedSettings = localStorage.getItem('google_start_settings');
-      if (savedSettings) {
-        try {
-          setSettings(JSON.parse(savedSettings));
-        } catch (e) {}
-      }
-      const savedLayout = localStorage.getItem('google_start_widgets_layout');
-      if (savedLayout) {
-        try {
-          setWidgets(JSON.parse(savedLayout));
-        } catch (e) {}
+      setIsSyncLoading(true);
+      try {
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        const res = await fetch('/api/sync', { headers });
+        if (res.ok) {
+          const cloudData = await res.json();
+          // Populate local storage using standard nativeSetItem to avoid recursive sync API trigger
+          Object.keys(cloudData).forEach((key) => {
+            nativeSetItem.call(localStorage, key, cloudData[key]);
+          });
+        }
+      } catch (e) {
+        console.error("Failed to fetch cloud sync data:", e);
+      } finally {
+        const savedSettings = localStorage.getItem('google_start_settings');
+        if (savedSettings) {
+          try {
+            setSettings(JSON.parse(savedSettings));
+          } catch (e) {}
+        }
+        const savedLayout = localStorage.getItem('google_start_widgets_layout');
+        if (savedLayout) {
+          try {
+            setWidgets(JSON.parse(savedLayout));
+          } catch (e) {}
+        }
+        setIsSyncLoading(false);
       }
     }
     loadData();
@@ -194,6 +256,17 @@ export default function App() {
     backgroundStyle.backgroundSize = 'cover';
     backgroundStyle.backgroundPosition = 'center';
     backgroundStyle.backgroundAttachment = 'fixed';
+  }
+
+  if (isSyncLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center font-sans text-white select-none">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-3 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          <h2 className="text-[10px] font-semibold tracking-widest uppercase text-white/50">Syncing Start Page...</h2>
+        </div>
+      </div>
+    );
   }
 
   return (

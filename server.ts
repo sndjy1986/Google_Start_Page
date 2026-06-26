@@ -1,13 +1,15 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import { adminAuth } from "./src/lib/firebase-admin.ts";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || "3000", 10);
 
 app.use(express.json());
 
@@ -16,16 +18,17 @@ let aiClient: GoogleGenAI | null = null;
 
 function getGeminiClient(): GoogleGenAI | null {
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey && apiKey !== "MY_GEMINI_API_KEY") {
+    let apiKey = process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      apiKey = apiKey.trim();
+    }
+    // All real Google API keys start with 'AIzaSy'. Check for this to prevent invalid credentials initialization
+    if (apiKey && apiKey !== "MY_GEMINI_API_KEY" && apiKey !== "undefined" && apiKey !== "null" && apiKey.startsWith("AIzaSy")) {
       aiClient = new GoogleGenAI({
         apiKey: apiKey,
-        httpOptions: {
-          headers: {
-            "User-Agent": "aistudio-build",
-          },
-        },
       });
+    } else {
+      console.warn("Gemini API key is missing, empty, or invalid. Initializing in high-quality offline demo mode.");
     }
   }
   return aiClient;
@@ -64,7 +67,7 @@ app.post("/api/gemini/chat", async (req, res) => {
     const systemInstruction = "You are a friendly, witty personal companion on the user's custom browser start page. Give concise, interesting, and direct answers, keeping them short (under 4-5 sentences) and helpful.";
 
     const response = await client.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: `${formattedHistory}\nAssistant:`,
       config: {
         systemInstruction,
@@ -155,7 +158,7 @@ Wind: ${wind} ${displayWindUnit}
 Give a funny, warm, and highly engaging one-sentence weather commentary or advice for the user's browser home page. Keep it light, casual, and under 25 words.`;
 
     const response = await client.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         systemInstruction: "You are a witty, friendly browser homepage weather reporter.",
@@ -228,7 +231,7 @@ app.post("/api/gemini/quote", async (req, res) => {
     const prompt = `Generate an inspiring, deep, or interesting quote for the category: ${category}. Return the quote and the author name separated by ' — '. Keep the quote short, punchy, and beautiful. Do not include quotes symbols.`;
 
     const response = await client.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         systemInstruction: "You are a master of wisdom and motivation, crafting beautiful sayings for a minimalist start page.",
@@ -247,6 +250,83 @@ app.post("/api/gemini/quote", async (req, res) => {
     console.error("Gemini Quote API Error:", error);
     const fallback = getRandomFallbackQuote(category);
     res.json(fallback);
+  }
+});
+
+// 5. API: State Sync (GET & POST) to survive iframe / environment restarts
+app.get("/api/sync", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  let userId = "guest";
+
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split("Bearer ")[1];
+    try {
+      const decodedToken = await adminAuth.verifyIdToken(token);
+      userId = decodedToken.uid;
+    } catch (e) {
+      console.error("Error verifying token during get sync, using guest:", e);
+    }
+  }
+
+  try {
+    const dataPath = path.join(process.cwd(), "settings_store.json");
+    let store: Record<string, Record<string, string>> = {};
+    if (fs.existsSync(dataPath)) {
+      const content = fs.readFileSync(dataPath, "utf-8");
+      if (content.trim()) {
+        try {
+          store = JSON.parse(content);
+        } catch (e) {
+          console.error("Failed to parse settings_store.json, resetting:", e);
+        }
+      }
+    }
+    res.json(store[userId] || {});
+  } catch (error) {
+    console.error("Get Sync API Error:", error);
+    res.status(500).json({ error: "Failed to load sync data" });
+  }
+});
+
+app.post("/api/sync", async (req, res) => {
+  const { key, value } = req.body;
+  const authHeader = req.headers.authorization;
+  let userId = "guest";
+
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split("Bearer ")[1];
+    try {
+      const decodedToken = await adminAuth.verifyIdToken(token);
+      userId = decodedToken.uid;
+    } catch (e) {
+      console.error("Error verifying token during post sync, using guest:", e);
+    }
+  }
+
+  try {
+    const dataPath = path.join(process.cwd(), "settings_store.json");
+    let store: Record<string, Record<string, string>> = {};
+    if (fs.existsSync(dataPath)) {
+      const content = fs.readFileSync(dataPath, "utf-8");
+      if (content.trim()) {
+        try {
+          store = JSON.parse(content);
+        } catch (e) {
+          console.error("Failed to parse settings_store.json for writing, resetting:", e);
+        }
+      }
+    }
+
+    if (!store[userId]) {
+      store[userId] = {};
+    }
+
+    store[userId][key] = value;
+    fs.writeFileSync(dataPath, JSON.stringify(store, null, 2), "utf-8");
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Post Sync API Error:", error);
+    res.status(500).json({ error: "Failed to sync data" });
   }
 });
 
