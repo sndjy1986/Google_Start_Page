@@ -47,9 +47,10 @@ export default function SettingsPanel({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <React.Fragment key="settings-panel">
           {/* Backdrop blur overlay */}
           <motion.div
+            key="backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -59,6 +60,7 @@ export default function SettingsPanel({
 
           {/* Drawer Content */}
           <motion.div
+            key="drawer"
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
@@ -327,7 +329,7 @@ export default function SettingsPanel({
               </button>
             </div>
           </motion.div>
-        </>
+        </React.Fragment>
       )}
     </AnimatePresence>
   );

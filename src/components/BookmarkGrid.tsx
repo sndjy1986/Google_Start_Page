@@ -147,7 +147,7 @@ export default function BookmarkGrid() {
           />
           <input
             type="text"
-            placeholder="Icon (dashboardicons.com)"
+            placeholder="Icon name or URL"
             value={newBookmarkIcon}
             onChange={(e) => setNewBookmarkIcon(e.target.value)}
             className="px-3 py-1.5 text-xs bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:border-white/50 placeholder-white/50"
@@ -173,9 +173,14 @@ export default function BookmarkGrid() {
       {/* Bookmark Grid */}
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6 justify-items-center">
         {filteredBookmarks.map((bm) => {
-          const iconUrl = bm.iconName 
-            ? `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/${bm.iconName.toLowerCase()}.png`
-            : getFaviconUrl(bm.url);
+          let iconUrl = getFaviconUrl(bm.url);
+          if (bm.iconName) {
+            if (bm.iconName.startsWith('http://') || bm.iconName.startsWith('https://')) {
+              iconUrl = bm.iconName;
+            } else {
+              iconUrl = `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/${bm.iconName.toLowerCase()}.png`;
+            }
+          }
 
           return (
             <div key={bm.id} className="relative group flex flex-col items-center gap-2">
