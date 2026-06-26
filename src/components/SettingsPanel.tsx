@@ -11,7 +11,8 @@ interface SettingsPanelProps {
   widgetVisibility: Record<WidgetType, boolean>;
   onToggleWidget: (type: WidgetType) => void;
   onResetLayout: () => void;
-  onSync?: () => void;
+  onPullSync?: () => void;
+  onPushSync?: () => void;
 }
 
 const PRESET_WALLPAPERS = [
@@ -40,7 +41,8 @@ export default function SettingsPanel({
   widgetVisibility,
   onToggleWidget,
   onResetLayout,
-  onSync
+  onPullSync,
+  onPushSync
 }: SettingsPanelProps) {
   return (
     <AnimatePresence>
@@ -285,24 +287,31 @@ export default function SettingsPanel({
                 Sync Passcode
               </h3>
               <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Enter secret passcode..."
+                  value={settings.syncPasscode || ''}
+                  onChange={(e) => onChangeSettings({ syncPasscode: e.target.value })}
+                  className="w-full px-3 py-2 text-xs bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:border-white/50 placeholder-white/50"
+                />
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter secret passcode..."
-                    value={settings.syncPasscode || ''}
-                    onChange={(e) => onChangeSettings({ syncPasscode: e.target.value })}
-                    className="flex-1 px-3 py-2 text-xs bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:border-white/50 placeholder-white/50"
-                  />
                   <button
-                    onClick={onSync}
+                    onClick={onPushSync}
                     disabled={!settings.syncPasscode || settings.syncPasscode.trim().length === 0}
-                    className="px-4 py-2 text-xs font-bold text-slate-900 bg-amber-300 rounded-lg hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex-1 px-3 py-2 text-[10px] font-bold uppercase text-slate-900 bg-amber-300 rounded-lg hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Sync
+                    Backup to Cloud
+                  </button>
+                  <button
+                    onClick={onPullSync}
+                    disabled={!settings.syncPasscode || settings.syncPasscode.trim().length === 0}
+                    className="flex-1 px-3 py-2 text-[10px] font-bold uppercase text-white bg-blue-500 rounded-lg hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Restore from Cloud
                   </button>
                 </div>
                 <p className="text-[9px] text-white/40 leading-relaxed italic">
-                  Use the same passcode on other devices to sync your widgets and settings securely without logging in.
+                  Backup to save current setup. Restore to pull setup onto this device.
                 </p>
               </div>
             </div>

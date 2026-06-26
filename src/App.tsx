@@ -150,7 +150,7 @@ export default function App() {
     localStorage.setItem('google_start_settings', JSON.stringify(updated));
   };
 
-  const handleSync = async () => {
+  const handlePullSync = async () => {
     if (!settings.syncPasscode || settings.syncPasscode.trim().length === 0) return;
     setIsSyncLoading(true);
     try {
@@ -167,9 +167,54 @@ export default function App() {
         }
       }
     } catch (e) {
-      console.error("Failed to fetch cloud sync data on manual sync:", e);
+      console.error("Failed to fetch cloud sync data on pull:", e);
     }
     window.location.reload();
+  };
+
+  const handlePushSync = async () => {
+    if (!settings.syncPasscode || settings.syncPasscode.trim().length === 0) return;
+    setIsSyncLoading(true);
+    
+    const keysToSync = [
+      'google_start_settings',
+      'google_start_widgets_layout',
+      'google_start_bookmarks',
+      'widget_todos',
+      'widget_notes_content',
+      'widget_chat_history',
+      'quote_category',
+      'clock_24h',
+      'clock_seconds',
+      'custom_user_name',
+      'weather_location_name',
+      'weather_lat',
+      'weather_lon'
+    ];
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'x-sync-passcode': settings.syncPasscode
+      };
+      
+      // Push all keys sequentially to avoid overwhelming
+      for (const key of keysToSync) {
+        const val = localStorage.getItem(key);
+        if (val !== null) {
+          await fetch('/api/sync', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ key, value: val }),
+          });
+        }
+      }
+      alert('Successfully backed up to cloud!');
+    } catch (e) {
+      console.error("Failed to push cloud sync data:", e);
+      alert('Failed to back up to cloud.');
+    }
+    setIsSyncLoading(false);
   };
 
   // Save Widgets
@@ -407,7 +452,8 @@ export default function App() {
         widgetVisibility={activeVisibilityMap}
         onToggleWidget={handleToggleWidget}
         onResetLayout={handleResetLayout}
-        onSync={handleSync}
+        onPullSync={handlePullSync}
+        onPushSync={handlePushSync}
       />
 
       {/* Sleek Minimal Footer */}
