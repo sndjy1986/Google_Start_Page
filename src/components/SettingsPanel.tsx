@@ -11,6 +11,7 @@ interface SettingsPanelProps {
   widgetVisibility: Record<WidgetType, boolean>;
   onToggleWidget: (type: WidgetType) => void;
   onResetLayout: () => void;
+  onSync?: () => void;
 }
 
 const PRESET_WALLPAPERS = [
@@ -38,7 +39,8 @@ export default function SettingsPanel({
   onChangeSettings,
   widgetVisibility,
   onToggleWidget,
-  onResetLayout
+  onResetLayout,
+  onSync
 }: SettingsPanelProps) {
   return (
     <AnimatePresence>
@@ -283,13 +285,22 @@ export default function SettingsPanel({
                 Sync Passcode
               </h3>
               <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="Enter secret passcode to sync..."
-                  value={settings.syncPasscode || ''}
-                  onChange={(e) => onChangeSettings({ syncPasscode: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:border-white/50 placeholder-white/50"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter secret passcode..."
+                    value={settings.syncPasscode || ''}
+                    onChange={(e) => onChangeSettings({ syncPasscode: e.target.value })}
+                    className="flex-1 px-3 py-2 text-xs bg-white/10 text-white rounded-lg border border-white/20 focus:outline-none focus:border-white/50 placeholder-white/50"
+                  />
+                  <button
+                    onClick={onSync}
+                    disabled={!settings.syncPasscode || settings.syncPasscode.trim().length === 0}
+                    className="px-4 py-2 text-xs font-bold text-slate-900 bg-amber-300 rounded-lg hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Sync
+                  </button>
+                </div>
                 <p className="text-[9px] text-white/40 leading-relaxed italic">
                   Use the same passcode on other devices to sync your widgets and settings securely without logging in.
                 </p>

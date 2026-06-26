@@ -148,30 +148,28 @@ export default function App() {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
     localStorage.setItem('google_start_settings', JSON.stringify(updated));
-    
-    // If passcode was just changed/entered, trigger a hard reload so all widgets sync down
-    if (newSettings.syncPasscode !== undefined && newSettings.syncPasscode !== settings.syncPasscode) {
-        if (newSettings.syncPasscode.trim().length > 0) {
-            setIsSyncLoading(true);
-            try {
-              const headers: Record<string, string> = {
-                'x-sync-passcode': newSettings.syncPasscode
-              };
-              const res = await fetch('/api/sync', { headers });
-              if (res.ok) {
-                const cloudData = await res.json();
-                if (Object.keys(cloudData).length > 0) {
-                  Object.keys(cloudData).forEach((key) => {
-                    nativeSetItem.call(localStorage, key, cloudData[key]);
-                  });
-                }
-              }
-            } catch (e) {
-              console.error("Failed to fetch cloud sync data on passcode change:", e);
-            }
-            window.location.reload();
+  };
+
+  const handleSync = async () => {
+    if (!settings.syncPasscode || settings.syncPasscode.trim().length === 0) return;
+    setIsSyncLoading(true);
+    try {
+      const headers: Record<string, string> = {
+        'x-sync-passcode': settings.syncPasscode
+      };
+      const res = await fetch('/api/sync', { headers });
+      if (res.ok) {
+        const cloudData = await res.json();
+        if (Object.keys(cloudData).length > 0) {
+          Object.keys(cloudData).forEach((key) => {
+            nativeSetItem.call(localStorage, key, cloudData[key]);
+          });
         }
+      }
+    } catch (e) {
+      console.error("Failed to fetch cloud sync data on manual sync:", e);
     }
+    window.location.reload();
   };
 
   // Save Widgets
@@ -409,6 +407,7 @@ export default function App() {
         widgetVisibility={activeVisibilityMap}
         onToggleWidget={handleToggleWidget}
         onResetLayout={handleResetLayout}
+        onSync={handleSync}
       />
 
       {/* Sleek Minimal Footer */}

@@ -2,15 +2,17 @@ import React, { useState } from 'react';
 import { Plus, Trash2, ExternalLink, Link2, FolderPlus, Globe } from 'lucide-react';
 import { Bookmark } from '../types';
 
+const CATEGORIES = ['Home', 'Work', 'Server'];
+
 const INITIAL_BOOKMARKS: Bookmark[] = [
-  { id: '1', name: 'Google', url: 'https://google.com' },
-  { id: '2', name: 'GitHub', url: 'https://github.com' },
-  { id: '3', name: 'Gemini AI', url: 'https://gemini.google.com' },
-  { id: '4', name: 'YouTube', url: 'https://youtube.com' },
-  { id: '5', name: 'StackOverflow', url: 'https://stackoverflow.com' },
-  { id: '6', name: 'MDN Web Docs', url: 'https://developer.mozilla.org' },
-  { id: '7', name: 'Tailwind CSS', url: 'https://tailwindcss.com' },
-  { id: '8', name: 'Dribbble', url: 'https://dribbble.com' },
+  { id: '1', name: 'Google', url: 'https://google.com', category: 'Home' },
+  { id: '2', name: 'GitHub', url: 'https://github.com', category: 'Work' },
+  { id: '3', name: 'Gemini AI', url: 'https://gemini.google.com', category: 'Work' },
+  { id: '4', name: 'YouTube', url: 'https://youtube.com', category: 'Home' },
+  { id: '5', name: 'StackOverflow', url: 'https://stackoverflow.com', category: 'Work' },
+  { id: '6', name: 'MDN Web Docs', url: 'https://developer.mozilla.org', category: 'Work' },
+  { id: '7', name: 'Tailwind CSS', url: 'https://tailwindcss.com', category: 'Work' },
+  { id: '8', name: 'Localhost', url: 'http://localhost:3000', category: 'Server' },
 ];
 
 export default function BookmarkGrid() {
@@ -27,6 +29,7 @@ export default function BookmarkGrid() {
   });
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('Home');
   const [newBookmarkName, setNewBookmarkName] = useState('');
   const [newBookmarkUrl, setNewBookmarkUrl] = useState('');
   const [newBookmarkIcon, setNewBookmarkIcon] = useState('');
@@ -51,6 +54,7 @@ export default function BookmarkGrid() {
       name: newBookmarkName.trim(),
       url: formattedUrl,
       iconName: newBookmarkIcon.trim() || undefined,
+      category: activeCategory,
     };
 
     const updated = [...bookmarks, newBM];
@@ -83,14 +87,33 @@ export default function BookmarkGrid() {
     return name.slice(0, 2).toUpperCase();
   };
 
+  const filteredBookmarks = bookmarks.filter((bm) => (bm.category || 'Home') === activeCategory);
+
   return (
     <div className="w-full max-w-4xl mx-auto mt-6 px-4 select-none font-sans">
       {/* Header section */}
       <div className="flex items-center justify-between mb-4 border-b border-white/15 pb-2">
-        <h3 className="text-sm font-semibold tracking-wide text-white flex items-center gap-2">
-          <Link2 className="w-4 h-4 text-amber-300" />
-          Bookmarks
-        </h3>
+        <div className="flex items-center gap-4">
+          <h3 className="text-sm font-semibold tracking-wide text-white flex items-center gap-2">
+            <Link2 className="w-4 h-4 text-amber-300" />
+            Bookmarks
+          </h3>
+          <div className="flex items-center gap-1 bg-black/20 p-1 rounded-lg">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`text-xs px-3 py-1 rounded-md transition-all ${
+                  activeCategory === cat
+                    ? 'bg-white/20 text-white font-bold shadow-sm'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
           className="flex items-center gap-1 text-xs text-white/80 hover:text-white bg-white/10 hover:bg-white/15 border border-white/15 px-2.5 py-1 rounded-full transition-all"
@@ -149,7 +172,7 @@ export default function BookmarkGrid() {
 
       {/* Bookmark Grid */}
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6 justify-items-center">
-        {bookmarks.map((bm) => {
+        {filteredBookmarks.map((bm) => {
           const iconUrl = bm.iconName 
             ? `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/${bm.iconName.toLowerCase()}.png`
             : getFaviconUrl(bm.url);

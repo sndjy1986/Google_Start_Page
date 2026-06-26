@@ -3,6 +3,7 @@ export interface Bookmark {
   name: string;
   url: string;
   iconName?: string;
+  category?: string;
 }
 
 export type WidgetType = 'clock' | 'weather' | 'notes' | 'todo' | 'chat' | 'quotes';
