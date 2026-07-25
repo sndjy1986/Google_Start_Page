@@ -8,7 +8,8 @@ import { GoogleGenAI } from "@google/genai";
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+// AI Studio environment expects 3000, but standard Google Cloud Run passes the port via process.env.PORT
+const PORT = process.env.APPLET_ID ? 3000 : parseInt(process.env.PORT || "3000", 10);
 
 app.use(express.json());
 
