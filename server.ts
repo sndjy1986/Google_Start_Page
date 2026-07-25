@@ -259,7 +259,87 @@ app.post("/api/gemini/quote", async (req, res) => {
   }
 });
 
-// 5. API: State Sync (GET & POST) to survive iframe / environment restarts
+// 5. API: Word of the Day API
+app.post("/api/gemini/word-of-day", async (req, res) => {
+  const { language } = req.body; // 'en', 'es', 'fr', etc.
+  
+  const client = getGeminiClient();
+  if (!client) {
+    // Offline fallback
+    return res.json({
+      word: "Resilience",
+      phonetic: "/rɪˈzɪl.jəns/",
+      partOfSpeech: "Noun",
+      definition: "The capacity to withstand or to recover quickly from difficulties; toughness.",
+      example: "Her resilience in the face of adversity was truly inspiring."
+    });
+  }
+
+  try {
+    const prompt = `Generate a beautiful, rare, or interesting word of the day in the language code: ${language}.
+Return a strict JSON object with these exact keys:
+{
+  "word": "The word in its native language",
+  "phonetic": "Pronunciation or phonetic spelling",
+  "partOfSpeech": "Noun, verb, adjective, etc. in English",
+  "definition": "The definition in English",
+  "example": "A short example sentence in the native language followed by its English translation in parentheses"
+}`;
+
+    const response = await client.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.9,
+      },
+    });
+
+    const text = response.text || "{}";
+    const parsed = JSON.parse(text);
+    res.json(parsed);
+  } catch (error) {
+    console.error("Gemini Word of Day Error:", error);
+    res.json({
+      word: "Serendipity",
+      phonetic: "/ˌser.ənˈdɪp.ə.t̬i/",
+      partOfSpeech: "Noun",
+      definition: "The occurrence and development of events by chance in a happy or beneficial way.",
+      example: "Meeting her there was pure serendipity."
+    });
+  }
+});
+
+// Proxy Weather APIs
+app.post("/api/weather", async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+    const fetchRes = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph`
+    );
+    if (!fetchRes.ok) throw new Error("Weather fetch failed");
+    const data = await fetchRes.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch weather" });
+  }
+});
+
+app.post("/api/geocode", async (req, res) => {
+  try {
+    const { searchQuery } = req.body;
+    const fetchRes = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(searchQuery)}&count=1&language=en&format=json`
+    );
+    if (!fetchRes.ok) throw new Error("Geocode fetch failed");
+    const data = await fetchRes.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch geocode" });
+  }
+});
+
+// 6. API: State Sync (GET & POST) to survive iframe / environment restarts
 app.get("/api/sync", async (req, res) => {
   const passcode = req.headers["x-sync-passcode"] as string;
   let userId = "guest";

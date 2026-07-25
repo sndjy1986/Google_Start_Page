@@ -15,6 +15,7 @@ import TodoWidget from './components/TodoWidget';
 import NotesWidget from './components/NotesWidget';
 import GeminiChatWidget from './components/GeminiChatWidget';
 import QuotesWidget from './components/QuotesWidget';
+import WordOfDayWidget from './components/WordOfDayWidget';
 
 // 1. Intercept localStorage changes to automatically back them up to our server in real-time
 const nativeSetItem = localStorage.setItem;
@@ -35,7 +36,8 @@ localStorage.setItem = function (key: string, value: string) {
     'custom_user_name',
     'weather_location_name',
     'weather_lat',
-    'weather_lon'
+    'weather_lon',
+    'word_of_day_lang'
   ];
 
   if (keysToSync.includes(key)) {
@@ -77,6 +79,7 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: 'w-quotes', type: 'quotes', title: 'Zen Wisdom', x: 74, y: 55, w: 280, h: 200, visible: true, zIndex: 10 },
   { id: 'w-chat', type: 'chat', title: 'Gemini Assistant', x: 33, y: 64, w: 340, h: 285, visible: true, zIndex: 15 },
   { id: 'w-notes', type: 'notes', title: 'Autosave Notes', x: 2, y: 72, w: 270, h: 215, visible: true, zIndex: 10 },
+  { id: 'w-word', type: 'word', title: 'Word of the Day', x: 74, y: 78, w: 280, h: 200, visible: false, zIndex: 10 },
 ];
 
 export default function App() {
@@ -108,7 +111,15 @@ export default function App() {
       const savedLayout = localStorage.getItem('google_start_widgets_layout');
       if (savedLayout) {
         try {
-          setWidgets(JSON.parse(savedLayout));
+          const parsedLayout = JSON.parse(savedLayout) as WidgetConfig[];
+          // Merge missing widgets from DEFAULT_WIDGETS
+          const mergedLayout = [...parsedLayout];
+          DEFAULT_WIDGETS.forEach(defaultWidget => {
+            if (!mergedLayout.find(w => w.type === defaultWidget.type)) {
+              mergedLayout.push(defaultWidget);
+            }
+          });
+          setWidgets(mergedLayout);
         } catch (e) {}
       }
 
@@ -131,7 +142,16 @@ export default function App() {
               }
               const updatedLayout = localStorage.getItem('google_start_widgets_layout');
               if (updatedLayout) {
-                try { setWidgets(JSON.parse(updatedLayout)); } catch (e) {}
+                try {
+                  const parsedLayout = JSON.parse(updatedLayout) as WidgetConfig[];
+                  const mergedLayout = [...parsedLayout];
+                  DEFAULT_WIDGETS.forEach(defaultWidget => {
+                    if (!mergedLayout.find(w => w.type === defaultWidget.type)) {
+                      mergedLayout.push(defaultWidget);
+                    }
+                  });
+                  setWidgets(mergedLayout);
+                } catch (e) {}
               }
             }
           }
@@ -191,7 +211,8 @@ export default function App() {
       'custom_user_name',
       'weather_location_name',
       'weather_lat',
-      'weather_lon'
+      'weather_lon',
+      'word_of_day_lang'
     ];
 
     try {
@@ -323,6 +344,8 @@ export default function App() {
         return <GeminiChatWidget />;
       case 'quotes':
         return <QuotesWidget />;
+      case 'word':
+        return <WordOfDayWidget />;
       default:
         return null;
     }

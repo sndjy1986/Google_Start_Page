@@ -47,9 +47,11 @@ export default function WeatherWidget() {
     setIsLoading(true);
     setErrorMsg('');
     try {
-      const res = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph`
-      );
+      const res = await fetch('/api/weather', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude, longitude })
+      });
       if (!res.ok) throw new Error('Failed to fetch weather forecast.');
 
       const data = await res.json();
@@ -113,9 +115,11 @@ export default function WeatherWidget() {
     setIsLoading(true);
     setErrorMsg('');
     try {
-      const geoRes = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(searchQuery)}&count=1&language=en&format=json`
-      );
+      const geoRes = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ searchQuery })
+      });
       if (!geoRes.ok) throw new Error('Geocoding service error.');
 
       const geoData = await geoRes.json();

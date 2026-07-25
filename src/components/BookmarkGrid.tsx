@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, ExternalLink, Link2, FolderPlus, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, ExternalLink, Link2, FolderPlus, Globe, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
 import { Bookmark } from '../types';
 
 const DEFAULT_CATEGORIES = ['Home', 'Work', 'Server'];
@@ -34,6 +34,7 @@ export default function BookmarkGrid() {
   });
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingBookmarkId, setEditingBookmarkId] = useState<string | null>(null);
   const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
   const [activeCategory, setActiveCategory] = useState(categories[0] || 'Home');
   const [newBookmarkName, setNewBookmarkName] = useState('');
@@ -67,20 +68,42 @@ export default function BookmarkGrid() {
       formattedUrl = `https://${formattedUrl}`;
     }
 
-    const newBM: Bookmark = {
-      id: Date.now().toString(),
-      name: newBookmarkName.trim(),
-      url: formattedUrl,
-      iconName: newBookmarkIcon.trim() || undefined,
-      category: activeCategory,
-    };
+    if (editingBookmarkId) {
+      const updated = bookmarks.map(b => b.id === editingBookmarkId ? {
+        ...b,
+        name: newBookmarkName.trim(),
+        url: formattedUrl,
+        iconName: newBookmarkIcon.trim() || undefined,
+        category: activeCategory
+      } : b);
+      saveBookmarks(updated);
+    } else {
+      const newBM: Bookmark = {
+        id: Date.now().toString(),
+        name: newBookmarkName.trim(),
+        url: formattedUrl,
+        iconName: newBookmarkIcon.trim() || undefined,
+        category: activeCategory,
+      };
 
-    saveBookmarks([...bookmarks, newBM]);
+      saveBookmarks([...bookmarks, newBM]);
+    }
 
     setNewBookmarkName('');
     setNewBookmarkUrl('');
     setNewBookmarkIcon('');
     setShowAddForm(false);
+    setEditingBookmarkId(null);
+  };
+
+  const handleEditClick = (bm: Bookmark, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setNewBookmarkName(bm.name);
+    setNewBookmarkUrl(bm.url);
+    setNewBookmarkIcon(bm.iconName || '');
+    setEditingBookmarkId(bm.id);
+    setShowAddForm(true);
   };
 
   const handleAddCategory = (e: React.FormEvent) => {
@@ -320,6 +343,15 @@ export default function BookmarkGrid() {
                 className="absolute -top-1 -right-1 p-1 rounded-full bg-black/80 text-white/60 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all scale-75 hover:scale-100 shadow-md"
               >
                 <Trash2 className="w-2.5 h-2.5" />
+              </button>
+
+              {/* Edit Button */}
+              <button
+                onClick={(e) => handleEditClick(bm, e)}
+                title={`Edit ${bm.name}`}
+                className="absolute -top-1 right-5 p-1 rounded-full bg-black/80 text-white/60 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition-all scale-75 hover:scale-100 shadow-md"
+              >
+                <Edit3 className="w-2.5 h-2.5" />
               </button>
             </div>
           );

@@ -266,7 +266,7 @@ export default function SettingsPanel({
                 {(Object.keys(widgetVisibility) as WidgetType[]).map((type) => (
                   <div key={type} className="flex items-center justify-between text-xs">
                     <span className="font-semibold capitalize tracking-wide text-white/90">
-                      {type === 'todo' ? 'To-Do Checklist' : type === 'chat' ? 'Gemini Chatbot' : type === 'quotes' ? 'Daily Quotes' : type}
+                      {type === 'todo' ? 'To-Do Checklist' : type === 'chat' ? 'Gemini Chatbot' : type === 'quotes' ? 'Daily Quotes' : type === 'word' ? 'Word of the Day' : type}
                     </span>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input

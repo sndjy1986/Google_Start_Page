@@ -6,7 +6,7 @@ export interface Bookmark {
   category?: string;
 }
 
-export type WidgetType = 'clock' | 'weather' | 'notes' | 'todo' | 'chat' | 'quotes';
+export type WidgetType = 'clock' | 'weather' | 'notes' | 'todo' | 'chat' | 'quotes' | 'word';
 
 export interface WidgetConfig {
   id: string;
